@@ -1,0 +1,448 @@
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar (collapsedChange)="sidebarCollapsed = $event" />
+
+  <div class="page-area">
+    <app-header [title]="config.title" />
+
+    <main *ngIf="dataMode.mode() === 'demo'; else emptyDashboard">
+      <section class="welcome-panel">
+        <div class="welcome-copy">
+          <span class="eyebrow"><i></i>{{ config.eyebrow }}</span>
+          <h1>{{ greeting }}, {{ auth.currentUser.name.split(' ')[0] }}</h1>
+          <p>{{ config.description }}</p>
+          <div class="hero-highlights" aria-label="Dashboard highlights">
+            <span><b>{{ pulseStatus }}</b><small>Overall pulse</small></span>
+            <span><b>+{{ momentumChange }}%</b><small>{{ periodLabel }} momentum</small></span>
+            <span><b>{{ config.attention.length }}</b><small>Actions to review</small></span>
+          </div>
+        </div>
+
+        <div class="dashboard-controls">
+          <div class="context-control">
+            <span>{{ config.contextLabel }}</span>
+            <button
+              type="button"
+              class="context-button"
+              (click)="toggleContext($event)"
+              aria-haspopup="listbox"
+              [attr.aria-expanded]="contextOpen"
+            >
+              <app-icon name="team" />
+              <b>{{ currentContext }}</b>
+              <span class="dropdown-cue" aria-hidden="true">
+                <small>{{ language.text('Change', 'تغيير') }}</small>
+                <i [class.open]="contextOpen">⌄</i>
+              </span>
+            </button>
+            <div class="context-menu" *ngIf="contextOpen" role="listbox" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                *ngFor="let option of contextOptions"
+                role="option"
+                [attr.aria-selected]="currentContext === option"
+                [class.selected]="currentContext === option"
+                (click)="selectContext(option, $event)"
+              >
+                <span><app-icon name="team" />{{ option }}</span>
+                <b *ngIf="currentContext === option">✓</b>
+              </button>
+            </div>
+          </div>
+          <div class="date-control">
+            <span>Today</span>
+            <div class="date-block">
+              <b>{{ today }}</b>
+            </div>
+          </div>
+          <div class="quick-actions-control">
+            <button
+              type="button"
+              class="quick-actions-trigger"
+              (click)="toggleQuickActions($event)"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="quickActionsOpen"
+            >
+              <b>＋</b> Quick actions <i [class.open]="quickActionsOpen">⌄</i>
+            </button>
+            <div class="quick-actions-menu" *ngIf="quickActionsOpen" role="menu" (click)="$event.stopPropagation()">
+              <span>QUICK ACTIONS</span>
+              <a
+                *ngFor="let action of quickActions"
+                [routerLink]="action.route"
+                role="menuitem"
+                (click)="quickActionsOpen = false"
+              >
+                <i><app-icon [name]="action.icon" /></i>
+                <span><b>{{ action.label }}</b><small>{{ action.detail }}</small></span>
+                <strong aria-hidden="true">›</strong>
+              </a>
+            </div>
+          </div>
+          <span class="demo-pill"><i></i> Demo data</span>
+        </div>
+      </section>
+
+      <section class="section-intro overview-heading">
+        <div>
+          <span class="section-kicker">EXECUTIVE SNAPSHOT</span>
+          <h2>The numbers that need your attention</h2>
+          <p>A clear view of performance, readiness and operational priorities.</p>
+        </div>
+        <span class="period-note">Comparing the last {{ periodLabel }}</span>
+      </section>
+
+      <section class="update-strip">
+        <div class="changes-block">
+          <header>
+            <span><app-icon name="bell" /><b>Since your last visit</b></span>
+            <small>{{ recentChanges.length }} updates</small>
+          </header>
+          <div class="change-list">
+            <a
+              *ngFor="let change of recentChanges; trackBy: trackByTitle"
+              [routerLink]="change.route"
+              [attr.data-tone]="change.tone"
+            >
+              <i></i>
+              <span><b>{{ change.title }}</b><small>{{ change.meta }}</small></span>
+            </a>
+          </div>
+        </div>
+        <aside class="freshness-card" [attr.data-tone]="freshness.tone">
+          <div>
+            <span>DATA CONFIDENCE</span>
+            <b>{{ freshness.confidence }}%</b>
+          </div>
+          <div class="confidence-track"><i [style.width.%]="freshness.confidence"></i></div>
+          <p>{{ freshness.detail }}</p>
+          <small><app-icon name="check" />{{ freshness.updated }}</small>
+        </aside>
+      </section>
+
+      <section class="kpi-grid" aria-label="Key performance indicators">
+        <a
+          class="kpi-card"
+          *ngFor="let kpi of config.kpis; let kpiIndex = index; trackBy: trackByTitle"
+          [routerLink]="kpi.route"
+          [attr.data-tone]="kpi.tone"
+        >
+          <div class="kpi-head">
+            <span>{{ kpi.label }}</span>
+            <i><app-icon [name]="kpi.icon" /></i>
+          </div>
+          <strong>{{ kpi.value }}</strong>
+          <p>{{ kpi.detail }}</p>
+          <div class="kpi-spark" aria-hidden="true">
+            <i *ngFor="let point of kpiSpark(kpi.label, kpiIndex)" [style.height.%]="point"></i>
+          </div>
+          <footer>
+            <span>{{ kpi.trend }}</span>
+            <b aria-hidden="true">→</b>
+          </footer>
+        </a>
+      </section>
+
+      <section class="feature-section" aria-labelledby="feature-center-title">
+        <header class="feature-heading">
+          <div>
+            <span class="section-kicker">FEATURE CENTER</span>
+            <h2 id="feature-center-title">Your sports workspace</h2>
+            <p>Open the tools available for your role.</p>
+          </div>
+          <small>{{ featureCards.length }} available features</small>
+        </header>
+
+        <div class="feature-grid">
+          <a
+            *ngFor="let feature of featureCards; trackBy: trackByTitle"
+            class="feature-card"
+            [routerLink]="feature.route"
+            [attr.data-tone]="feature.tone"
+          >
+            <i class="feature-icon"><app-icon [name]="feature.icon" /></i>
+            <span class="feature-copy">
+              <b>{{ feature.label }}</b>
+              <small>{{ feature.description }}</small>
+            </span>
+            <span class="feature-value">
+              <b>{{ feature.value }}</b>
+              <small>{{ feature.meta }}</small>
+            </span>
+            <strong aria-hidden="true">›</strong>
+          </a>
+        </div>
+      </section>
+
+      <section class="dashboard-grid top-grid">
+        <article class="panel trend-panel">
+          <header class="panel-header">
+            <div>
+              <span class="section-kicker">PERFORMANCE</span>
+              <h2>{{ trendView.title }}</h2>
+            </div>
+            <div class="period-switch" aria-label="Select dashboard period">
+              <button
+                type="button"
+                *ngFor="let period of periods"
+                [class.active]="selectedPeriod === period"
+                (click)="selectPeriod(period)"
+              >{{ period }}</button>
+            </div>
+          </header>
+
+          <div class="metric-switch" aria-label="Select chart metric">
+            <button
+              type="button"
+              *ngFor="let metric of chartMetrics"
+              [class.active]="selectedChartMetric === metric.id"
+              (click)="selectChartMetric(metric.id)"
+            >{{ metric.label }}</button>
+          </div>
+
+          <div class="trend-summary">
+            <strong>{{ trendView.value }}</strong>
+            <span>↗ {{ trendView.change }}</span>
+          </div>
+
+          <div class="chart" role="img" [attr.aria-label]="trendView.title + ' for ' + selectedPeriod">
+            <svg viewBox="0 0 522 166" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#18a461" stop-opacity=".28" />
+                  <stop offset="1" stop-color="#18a461" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path class="grid-line" d="M0 32H522 M0 82H522 M0 132H522" />
+              <polygon [attr.points]="trendView.points + ' 514,160 8,160'" fill="url(#chartArea)" />
+              <polyline [attr.points]="trendView.points" />
+              <circle [attr.cx]="trendView.endX" [attr.cy]="trendView.endY" r="5" />
+            </svg>
+          </div>
+          <div class="chart-labels">
+            <span *ngFor="let label of trendView.axisLabels">{{ label }}</span>
+          </div>
+        </article>
+
+        <article class="panel attention-panel">
+          <header class="panel-header">
+            <div>
+              <span class="section-kicker">ACTION REQUIRED</span>
+              <h2>{{ config.attentionTitle }}</h2>
+            </div>
+            <span class="count-badge">{{ config.attention.length }}</span>
+          </header>
+
+          <div class="item-list">
+            <a
+              *ngFor="let item of config.attention; trackBy: trackByTitle"
+              [routerLink]="item.route"
+              class="action-item"
+              [attr.data-tone]="item.tone"
+            >
+              <i class="item-icon"><app-icon [name]="item.icon" /></i>
+              <span>
+                <b>{{ item.title }}</b>
+                <small>{{ item.detail }}</small>
+                <em>{{ item.meta }}</em>
+              </span>
+              <strong aria-hidden="true">›</strong>
+            </a>
+          </div>
+          <a routerLink="/pages/sports-notification" class="view-link">View all notifications <span>→</span></a>
+        </article>
+      </section>
+
+      <section class="analytics-section" aria-labelledby="analytics-title">
+        <header class="analytics-heading">
+          <div>
+            <span class="section-kicker">OPERATIONAL CHARTS</span>
+            <h2 id="analytics-title">{{ operationsCharts.title }}</h2>
+          </div>
+          <small>{{ operationsCharts.scope }}</small>
+        </header>
+
+        <div class="analytics-grid">
+          <article class="panel chart-card distribution-card">
+            <header><span>DISTRIBUTION</span><h3>{{ operationsCharts.distribution.title }}</h3></header>
+            <div class="distribution-content">
+              <div
+                class="segmented-donut"
+                [style.background]="operationsDonutGradient"
+                role="img"
+                [attr.aria-label]="operationsCharts.distribution.title"
+              >
+                <span><b>{{ operationsCharts.distribution.total }}</b><small>{{ operationsCharts.distribution.totalLabel }}</small></span>
+              </div>
+              <div class="distribution-legend">
+                <span *ngFor="let slice of operationsCharts.distribution.slices">
+                  <i [style.background]="slice.color"></i>
+                  <b>{{ slice.label }}</b>
+                  <small>{{ slice.value }}%</small>
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel chart-card operations-bars-card">
+            <header><span>COMPOSITION</span><h3>{{ operationsCharts.breakdown.title }}</h3></header>
+            <div class="operations-bars" role="img" [attr.aria-label]="operationsCharts.breakdown.title">
+              <div *ngFor="let item of operationsCharts.breakdown.bars">
+                <span><b>{{ item.label }}</b><small>{{ item.display }}</small></span>
+                <i><span [style.width.%]="item.value"></span></i>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel chart-card operations-status-card">
+            <header><span>STATUS</span><h3>{{ operationsCharts.status.title }}</h3></header>
+            <div class="status-stack" role="img" [attr.aria-label]="operationsCharts.status.title">
+              <span
+                *ngFor="let item of operationsCharts.status.items"
+                [attr.data-tone]="item.tone"
+                [style.flex-grow]="item.value || 0.15"
+              ></span>
+            </div>
+            <div class="operations-status-list">
+              <div *ngFor="let item of operationsCharts.status.items" [attr.data-tone]="item.tone">
+                <i></i>
+                <span><b>{{ item.label }}</b><small>{{ item.detail }}</small></span>
+                <strong>{{ item.value }}</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="management-pulse-section" aria-labelledby="management-pulse-title">
+        <header class="analytics-heading">
+          <div>
+            <span class="section-kicker">MANAGEMENT PULSE</span>
+            <h2 id="management-pulse-title">A faster read on the week</h2>
+            <p>Signal strength, daily activity and data consistency at a glance.</p>
+          </div>
+          <small>{{ currentContext }} · {{ selectedPeriod }}</small>
+        </header>
+
+        <div class="pulse-grid">
+          <article class="pulse-score-card">
+            <div class="pulse-gauge" [style.background]="pulseGaugeGradient">
+              <span><b>{{ pulseScore }}</b><small>/ 100</small></span>
+            </div>
+            <div>
+              <span>OVERALL SIGNAL</span>
+              <h3>{{ pulseStatus }}</h3>
+              <p>Your combined performance, availability and data-quality signal.</p>
+              <strong>↗ {{ momentumChange }}% momentum</strong>
+            </div>
+          </article>
+
+          <article class="panel weekly-activity-card">
+            <header><span>DAILY RHYTHM</span><h3>Weekly activity</h3></header>
+            <div class="weekly-bars" role="img" aria-label="Weekly activity bar chart">
+              <span *ngFor="let item of weeklyActivity">
+                <i><b [style.height.%]="item.value"></b></i>
+                <small>{{ item.label }}</small>
+                <em>{{ item.display }}</em>
+              </span>
+            </div>
+          </article>
+
+          <article class="panel activity-map-card">
+            <header><span>CONSISTENCY</span><h3>Four-week activity map</h3></header>
+            <div class="activity-map" role="img" aria-label="Four-week activity consistency heatmap">
+              <i *ngFor="let level of activityHeatmap" [attr.data-level]="level"></i>
+            </div>
+            <div class="activity-map-footer">
+              <span>4 weeks ago</span>
+              <div><small>Less</small><i data-level="1"></i><i data-level="3"></i><i data-level="5"></i><small>More</small></div>
+              <span>Today</span>
+            </div>
+            <p>{{ freshness.detail }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="insight-card">
+        <span><app-icon name="activity" /></span>
+        <div>
+          <b>SCOUTIFAI insight</b>
+          <p>{{ config.insight }}</p>
+        </div>
+        <small>DEMO ANALYSIS</small>
+      </section>
+
+      <section class="dashboard-grid bottom-grid">
+        <article class="panel table-panel">
+          <header class="panel-header">
+            <div>
+              <span class="section-kicker">OVERVIEW</span>
+              <h2>{{ config.tableTitle }}</h2>
+              <p>{{ config.tableDescription }}</p>
+            </div>
+            <a routerLink="/pages/sports-player" class="view-link">View details <span>→</span></a>
+          </header>
+
+          <div class="dashboard-table">
+            <div class="table-row table-head">
+              <span>Name</span>
+              <span *ngFor="let column of config.columns">{{ column }}</span>
+              <span></span>
+            </div>
+            <a class="table-row" *ngFor="let row of config.rows" [routerLink]="row.route">
+              <span class="person-cell">
+                <i>{{ row.initials }}</i>
+                <span><b>{{ row.name }}</b><small>{{ row.subtitle }}</small></span>
+              </span>
+              <span class="table-data-cell" *ngFor="let value of row.values">
+                <b
+                  class="table-value"
+                  [class.status-value]="value.tone"
+                  [attr.data-tone]="value.tone || null"
+                >{{ value.text }}</b>
+              </span>
+              <strong aria-hidden="true">›</strong>
+            </a>
+          </div>
+        </article>
+
+        <article class="panel schedule-panel">
+          <header class="panel-header">
+            <div>
+              <span class="section-kicker">SCHEDULE</span>
+              <h2>{{ config.scheduleTitle }}</h2>
+            </div>
+            <app-icon name="calendar" />
+          </header>
+
+          <div class="schedule-list">
+            <a *ngFor="let item of config.schedule; trackBy: trackByTitle" [routerLink]="item.route">
+              <span class="schedule-mark" [attr.data-tone]="item.tone"></span>
+              <span>
+                <b>{{ item.title }}</b>
+                <small>{{ item.detail }}</small>
+                <em>{{ item.meta }}</em>
+              </span>
+              <strong aria-hidden="true">›</strong>
+            </a>
+          </div>
+
+          <a [routerLink]="config.quickAction.route" class="quick-action">
+            <app-icon [name]="config.quickAction.icon" />
+            {{ config.quickAction.label }}
+          </a>
+        </article>
+      </section>
+    </main>
+
+    <ng-template #emptyDashboard>
+      <main class="empty-main">
+        <section class="empty-dashboard">
+          <div class="empty-icon"><app-icon name="grid" /></div>
+          <span>LIVE DASHBOARD</span>
+          <h1>No dashboard data yet</h1>
+          <p>The live dashboard is ready for your API data. Switch to Demo from the top bar to preview the dashboard design.</p>
+        </section>
+      </main>
+    </ng-template>
+  </div>
+</div>

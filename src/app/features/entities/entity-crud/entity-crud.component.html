@@ -1,0 +1,350 @@
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar (collapsedChange)="sidebarCollapsed = $event" />
+  <div class="page-area">
+    <app-header [title]="language.t(definition.label)" />
+    <main *ngIf="definition">
+      <section class="entity-card">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">
+              {{ language.t("SCOUTIFAI") }} / {{ language.t(definition.label) }}
+            </p>
+            <h2>{{ language.t(definition.label) }}</h2>
+          </div>
+          <button
+            *ngIf="canCreate"
+            class="primary"
+            (click)="openCreate()"
+          >
+            ＋ {{ language.t("Create") }} {{ language.t(definition.label) }}
+          </button>
+        </div>
+        <div class="table-frame">
+          <table>
+            <thead>
+              <tr>
+                <th *ngFor="let field of listFields" (click)="sort(field)">
+                  {{ language.t(field.label) }}
+                  <span *ngIf="sortBy === field.key">{{
+                    sortDirection === "asc" ? "↑" : "↓"
+                  }}</span>
+                </th>
+                <th>{{ language.t("Actions") }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let record of records; trackBy: trackById">
+                <td *ngFor="let field of listFields">
+                  {{ display(field, record[field.key]) }}
+                </td>
+                <td class="actions">
+                  <button
+                    [title]="language.t('View details')"
+                    (click)="openDetail(record)"
+                  >
+                    ◉</button
+                  ><button
+                    *ngIf="canEdit"
+                    [title]="language.t('Edit')"
+                    [disabled]="loadingRecordId === record.id"
+                    (click)="openEdit(record)"
+                  >
+                    {{ loadingRecordId === record.id ? "…" : "✎" }}</button
+                  ><button
+                    *ngIf="canDelete"
+                    class="danger"
+                    [title]="language.t('Delete')"
+                    (click)="remove(record)"
+                  >
+                    ⌫
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!records.length">
+                <td [attr.colspan]="listFields.length + 1" class="empty">
+                  {{ language.t("No records found.") }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <footer>
+          <span
+            >{{ language.t("Showing") }} {{ records.length }}
+            {{ language.t("of") }} {{ total }}</span
+          >
+          <div>
+            <select [(ngModel)]="pageSize" (change)="page = 1; load()">
+              <option [ngValue]="10">10 / {{ language.t("page") }}</option>
+              <option [ngValue]="25">25 / {{ language.t("page") }}</option>
+              <option [ngValue]="50">
+                50 / {{ language.t("page") }}
+              </option></select
+            ><button (click)="setPage(page - 1)" [disabled]="page === 1">
+              ‹</button
+            ><span
+              >{{ language.t("Page") }} {{ page }} {{ language.t("of") }}
+              {{ pageCount }}</span
+            ><button
+              (click)="setPage(page + 1)"
+              [disabled]="page === pageCount"
+            >
+              ›
+            </button>
+          </div>
+        </footer>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal" *ngIf="dialog" (click)="dialog = ''">
+  <section class="modal-card" (click)="$event.stopPropagation()">
+    <header>
+      <div>
+        <p>{{ language.t(definition.label) }}</p>
+        <h2>
+          {{
+            language.t(
+              dialog === "create"
+                ? "Create"
+                : dialog === "edit"
+                ? "Edit"
+                : "Details"
+            )
+          }}
+          {{ language.t(definition.label) }}
+        </h2>
+      </div>
+      <button (click)="dialog = ''">×</button>
+    </header>
+    <form
+      *ngIf="dialog === 'create' || dialog === 'edit'"
+      (ngSubmit)="submit()"
+    >
+      <div class="form-grid">
+        <label
+          *ngFor="let field of formFields"
+          [class.wide]="
+            field.type === 'text' ||
+            field.type === 'jsonObject' ||
+            field.type === 'file' ||
+            field.type === 'image'
+          "
+          ><span
+            >{{ language.t(field.label) }}
+            <b *ngIf="isRequired(field)">*</b></span
+          ><select
+            *ngIf="field.options?.length"
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+            (change)="onFieldChange(field)"
+          >
+            <option *ngFor="let option of field.options" [value]="option">
+              {{ language.t(option) }}
+            </option></select
+          ><select
+            *ngIf="field.type === 'link' && !field.options?.length"
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+          >
+            <option value="">
+              {{ language.t("Select") }} {{ language.t(field.label) }}
+            </option>
+            <option
+              *ngFor="let option of linkOptions[field.key]"
+              [value]="option.id"
+            >
+              {{ option["name"] || option.id }}
+            </option>
+          </select>
+          <div class="multi-picker" *ngIf="field.type === 'linkMultiple'">
+            <div
+              class="multi-option"
+              *ngFor="let option of linkOptions[field.key]"
+              [class.selected]="linkSelected(field.key, option.id)"
+            >
+              <input
+                type="checkbox"
+                [checked]="linkSelected(field.key, option.id)"
+                (change)="
+                  toggleLinkedOption(
+                    field.key,
+                    option.id,
+                    $any($event.target).checked
+                  )
+                "
+              />
+              <span>{{
+                option["name"] || option["userName"] || option.id
+              }}</span>
+            </div>
+            <small *ngIf="!(linkOptions[field.key] || []).length">{{
+              language.t("No records found.")
+            }}</small>
+          </div>
+          <div
+            *ngIf="field.type === 'file' && entity === 'SportsVideo'"
+            class="video-picker"
+          >
+            <input
+              type="file"
+              accept="video/*"
+              (change)="onVideoFileSelected($event)"
+              [required]="isRequired(field) && !videoUpload"
+            /><strong *ngIf="videoUpload">✓ {{ videoUpload.name }}</strong
+            ><small>{{
+              language.t(
+                videoFileReading
+                  ? "Reading video..."
+                  : "MP4, WebM, MOV or another video format"
+              )
+            }}</small>
+          </div>
+          <div class="password-field" *ngIf="field.key === 'loginPassword'">
+            <input
+              [type]="showLoginPassword ? 'text' : 'password'"
+              [(ngModel)]="form[field.key]"
+              [name]="field.key"
+              [required]="isRequired(field)"
+              autocomplete="new-password"
+            />
+            <button
+              type="button"
+              (click)="showLoginPassword = !showLoginPassword"
+              [attr.aria-label]="
+                showLoginPassword ? 'Hide password' : 'Show password'
+              "
+              [title]="showLoginPassword ? 'Hide password' : 'Show password'"
+            >
+              <app-icon [name]="showLoginPassword ? 'eyeOff' : 'eye'" />
+            </button>
+          </div>
+          <input
+            *ngIf="
+              ['varchar', 'email', 'phone', 'url', 'image', 'file'].includes(
+                field.type
+              ) &&
+              !(field.type === 'file' && entity === 'SportsVideo') &&
+              field.key !== 'loginPassword'
+            "
+            [type]="
+              field.type === 'email'
+                ? 'email'
+                : field.type === 'url'
+                ? 'url'
+                : 'text'
+            "
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+          /><input
+            *ngIf="field.type === 'int' || field.type === 'float'"
+            type="number"
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+          /><input
+            *ngIf="field.type === 'date' || field.type === 'datetime'"
+            [type]="field.type === 'date' ? 'date' : 'datetime-local'"
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+          /><label class="toggle" *ngIf="field.type === 'bool'"
+            ><input
+              type="checkbox"
+              [(ngModel)]="form[field.key]"
+              [name]="field.key"
+              [required]="isRequired(field)"
+            /><i></i>{{ language.t(form[field.key] ? "Yes" : "No") }}</label
+          ><textarea
+            *ngIf="field.type === 'text' || field.type === 'jsonObject'"
+            [(ngModel)]="form[field.key]"
+            [name]="field.key"
+            [required]="isRequired(field)"
+          ></textarea
+          ><small class="error" *ngIf="issue(field.key)">{{
+            language.t(issue(field.key)!)
+          }}</small></label
+        >
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="outline" (click)="dialog = ''">
+          {{ language.t("Cancel") }}</button
+        ><button class="primary" type="submit" [disabled]="videoFileReading">
+          {{
+            language.t(
+              videoFileReading
+                ? "Preparing video..."
+                : dialog === "edit"
+                ? "Update"
+                : "Create"
+            )
+          }}
+          {{ language.t(definition.label) }}
+        </button>
+      </div>
+    </form>
+    <div class="details-wrap" *ngIf="dialog === 'detail'">
+      <div class="document-actions">
+        <button
+          class="primary"
+          *ngIf="
+            ['SportsPlayer', 'SportsCoach', 'SportsStaff'].includes(entity) &&
+            canEdit
+          "
+          (click)="provisionLogin()"
+        >
+          {{ language.t("Create Login Account") }}</button
+        ><button
+          class="primary"
+          *ngIf="entity === 'SportsTeam' && canEdit"
+          (click)="generateAttendance()"
+        >
+          {{ language.t("Generate Attendance") }}</button
+        ><button
+          class="primary"
+          *ngIf="entity === 'SportsVideo' && canEdit"
+          (click)="addComment()"
+        >
+          {{ language.t("Add Video Comment") }}
+        </button>
+      </div>
+      <div class="details">
+        <div *ngFor="let field of detailFields">
+          <span>{{ language.t(field.label) }}</span
+          ><b>{{display(field,selected?.[field.key])}}</b>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" *ngIf="toast">✓ {{ toast }}</div>
+<div
+  class="confirm-overlay"
+  *ngIf="deleteTarget"
+  (click)="deleteTarget = undefined"
+>
+  <section class="confirm-card" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">!</div>
+    <h2>{{ language.t("Delete") }} {{ language.t(definition.label) }}?</h2>
+    <p>
+      This will permanently delete
+      <b>{{ deleteTarget["name"] || definition.label }}</b
+      >. This action cannot be undone.
+    </p>
+    <div class="confirm-actions">
+      <button class="outline" (click)="deleteTarget = undefined">
+        {{ language.t("Cancel") }}</button
+      ><button
+        class="confirm-danger"
+        [disabled]="deleting"
+        (click)="confirmDelete()"
+      >
+        {{ deleting ? "Deleting…" : language.t("Delete") }}
+      </button>
+    </div>
+  </section>
+</div>

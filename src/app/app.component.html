@@ -1,0 +1,9 @@
+<router-outlet />
+@if (apiLoading.loading()) {
+  <div class="api-loading" role="status" aria-live="polite" aria-label="Loading data">
+    <div class="loader-card">
+      <span class="loader-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div><b>Loading data</b><small>Please wait a moment…</small></div>
+    </div>
+  </div>
+}

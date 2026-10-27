@@ -1,0 +1,8 @@
+{
+  "/Player_Performance": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}

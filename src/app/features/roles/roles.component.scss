@@ -1,0 +1,261 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f5f8f6;
+}
+.page-area {
+  margin-left: 250px;
+  transition: 0.25s;
+}
+.sidebar-collapsed .page-area {
+  margin-left: 76px;
+}
+main {
+  padding: 22px 24px;
+}
+.card {
+  margin: 0;
+}
+.heading,
+.heading-actions,
+.toolbar,
+.modal-card header,
+.modal-actions,
+.presets {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.presets .selected {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 0 0 3px #08743f1c;
+}
+.heading {
+  justify-content: space-between;
+}
+.heading h2 {
+  font-size: 27px;
+  margin: 3px 0;
+}
+.heading p {
+  margin: 0;
+  color: var(--muted);
+}
+.eyebrow {
+  color: var(--green) !important;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.toolbar {
+  margin: 20px 0;
+  background: var(--soft);
+  padding: 14px;
+  border-radius: 13px;
+}
+.toolbar input,
+.name-field input,
+.modal-card select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 11px 13px;
+}
+.toolbar input {
+  width: min(380px, 100%);
+}
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  overflow: auto;
+}
+.table-wrap table {
+  margin: 0;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+}
+.actions button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--soft);
+  color: var(--green);
+}
+.actions .danger {
+  color: #d44;
+}
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 35px;
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #071c14b8;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.modal-card {
+  width: min(1100px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 30px 80px #0005;
+  scrollbar-width: thin;
+  scrollbar-color: #87b49f transparent;
+}
+.modal-card header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+.modal-card header p {
+  margin: 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+.modal-card header h2 {
+  margin: 4px 0 0;
+}
+.modal-card header button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--soft);
+  font-size: 22px;
+}
+.name-field,
+.assign-modal > label {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  font-weight: 700;
+}
+.presets {
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+.permission-table {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto;
+}
+.permission-table table {
+  margin: 0;
+  min-width: 850px;
+}
+.permission-table th,
+.permission-table td {
+  padding: 9px 10px;
+}
+.permission-table select {
+  padding: 8px;
+  min-width: 105px;
+}
+.modal-actions {
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.assign-modal {
+  width: min(620px, 100%);
+}
+.assign-modal select {
+  width: 100%;
+}
+.role-checks {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+.role-checks > span {
+  font-weight: 700;
+}
+.role-checks label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 130;
+  background: #123d2b;
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 11px;
+}
+:host-context([dir="rtl"]) .page-area {
+  margin-left: 0;
+  margin-right: 250px;
+}
+:host-context([dir="rtl"]) .sidebar-collapsed .page-area {
+  margin-left: 0;
+  margin-right: 76px;
+}
+:host-context([dir="rtl"]) .toast {
+  right: auto;
+  left: 24px;
+}
+@media (max-width: 800px) {
+  .page-area,
+  .sidebar-collapsed .page-area {
+    margin-left: 76px;
+  }
+  .heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .heading-actions {
+    flex-wrap: wrap;
+  }
+  main {
+    padding: 12px;
+  }
+  :host-context([dir="rtl"]) .page-area,
+  :host-context([dir="rtl"]) .sidebar-collapsed .page-area {
+    margin-left: 0;
+    margin-right: 76px;
+  }
+}
+.delete-confirm {
+  max-width: 430px;
+  text-align: center;
+}
+.warning-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff0f0;
+  color: #d33;
+  font-size: 28px;
+  font-weight: 800;
+}
+.danger-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 22px;
+  background: #d9363e;
+  color: #fff;
+  font-weight: 800;
+}

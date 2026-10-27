@@ -1,0 +1,281 @@
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar (collapsedChange)="sidebarCollapsed = $event" />
+  <div class="page-area">
+    <app-header [title]="selected ? 'Media Viewer / Timeline' : 'Media'" />
+    <main>
+      <section class="library" *ngIf="!selected">
+        <div class="title-row">
+          <div>
+            <p>SCOUTIFAI / MEDIA</p>
+            <h2>Sports Media Library</h2>
+            <span
+              >Review training, matches, rehabilitation and player
+              highlights.</span
+            >
+          </div>
+          <button
+            class="primary"
+            *ngIf="permission.canCreate('SportsVideo')"
+            (click)="openCreate()"
+          >
+            ＋ {{ language.text("Upload Media") }}
+          </button>
+        </div>
+        <div class="video-grid">
+          <article *ngFor="let video of filteredVideos" (click)="select(video)">
+            <div
+              class="thumb"
+              [style.background-image]="
+                thumbnail(video) ? 'url(' + thumbnail(video) + ')' : ''
+              "
+            >
+              <span class="play" *ngIf="!isImage(video)">▶</span>
+              <span class="photo-badge" *ngIf="isImage(video)">PHOTO</span>
+              <small *ngIf="!isImage(video)">{{ duration(video["durationSeconds"]) }}</small>
+            </div>
+            <div class="card-actions">
+              <button
+                *ngIf="permission.canEdit('SportsVideo')"
+                (click)="edit(video, $event)"
+              >
+                Edit</button
+              ><button
+                *ngIf="permission.canDelete('SportsVideo')"
+                (click)="remove(video, $event)"
+              >
+                Delete
+              </button>
+            </div>
+          </article>
+          <div class="empty" *ngIf="!filteredVideos.length">
+            No media found.
+          </div>
+        </div>
+      </section>
+      <section class="player-layout" *ngIf="selected">
+        <article class="player-card">
+          <button class="back" (click)="back()">← Back to library</button
+          ><img
+            *ngIf="videoSource && mediaIsImage"
+            class="media-image"
+            [src]="videoSource"
+            [alt]="selected['name'] || 'Media image'"
+          /><video
+            *ngIf="videoSource && !mediaIsImage"
+            controls
+            autoplay
+            [src]="videoSource"
+          ></video>
+          <div class="player-placeholder" *ngIf="!videoSource">
+            <span>{{ videoLoading ? "◌" : "▶" }}</span
+            ><b>{{ videoLoading ? "LOADING MEDIA" : "MEDIA VIEWER" }}</b
+            ><small>{{
+              videoError ||
+                (selected["processingStatus"] === "Ready"
+                  ? "No playable media file was returned by the API"
+                  : "Media is " + selected["processingStatus"])
+            }}</small>
+          </div>
+          <div class="timeline">
+            <i
+              *ngFor="let tag of selectedTags"
+              [style.left.%]="tagPosition(tag)"
+              [title]="tag['name']"
+            ></i>
+          </div>
+        </article>
+        <aside class="insights">
+          <header>
+            <h3>Comments</h3>
+            <button
+              *ngIf="permission.canCreate('VideoComment')"
+              (click)="openComment()"
+            >
+              ＋ Add
+            </button>
+          </header>
+          <div class="note" *ngFor="let comment of selectedComments">
+            <b>{{ comment["name"] || "Coach" }}</b
+            ><span>{{ comment["comment"] }}</span>
+          </div>
+          <p class="muted" *ngIf="!selectedComments.length">No comments yet.</p>
+          <h3>Timeline Tags</h3>
+          <div class="tag" *ngFor="let tag of selectedTags">
+            <b>{{ duration(tag["timeSecond"]) }}</b
+            ><span>{{ tag["name"] || tag["tagType"] }}</span>
+          </div>
+          <p class="muted" *ngIf="!selectedTags.length">
+            No timeline tags yet.
+          </p>
+        </aside>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="modal" *ngIf="dialog" (click)="dialog = ''">
+  <form
+    (click)="$event.stopPropagation()"
+    (ngSubmit)="
+      dialog === 'link'
+        ? saveLink()
+        : dialog === 'comment'
+        ? saveComment()
+        : selected
+        ? saveExisting()
+        : saveVideo()
+    "
+  >
+    <header>
+      <div>
+        <small>{{selected?.['name']}}</small>
+        <h2>
+          {{
+            dialog === "link"
+              ? language.text("Link player to video")
+              : dialog === "comment"
+              ? language.text("Add video comment")
+              : selected
+              ? language.text("Edit Media")
+              : language.text("Upload Media")
+          }}
+        </h2>
+      </div>
+      <button type="button" aria-label="Close" (click)="dialog = ''">×</button>
+    </header>
+    <ng-container *ngIf="dialog === 'video'">
+      <label class="wide" *ngIf="!isPlayerLogin"
+        >Player *
+        <select
+          [(ngModel)]="videoForm['playerId']"
+          name="uploadPlayer"
+          required
+        >
+          <option value="">Choose a player</option>
+          <option *ngFor="let player of uploadPlayers" [value]="player.id">
+            {{ player["name"] }}
+          </option>
+        </select>
+      </label>
+      <label
+        >Title *<input [(ngModel)]="videoForm['name']" name="name" required
+      /></label>
+      <label
+        >Image or video file *<input
+          type="file"
+          accept="video/*,image/*"
+          (change)="onFile($event)"
+      /></label>
+      </ng-container
+    ><ng-container *ngIf="dialog === 'link'"
+      ><label class="wide"
+        >Player *<select
+          [(ngModel)]="linkForm['player']"
+          name="player"
+          required
+        >
+          <option value="">Choose a player</option>
+          <option *ngFor="let player of players" [value]="player.id">
+            {{ player["name"] }}
+          </option>
+        </select></label
+      ><label
+        >Role in video<select [(ngModel)]="linkForm['roleInVideo']" name="role">
+          <option>Primary</option>
+          <option>Secondary</option>
+          <option>Opponent</option>
+        </select></label
+      ><label
+        >Clip range (seconds)
+        <div class="range">
+          <input
+            type="number"
+            min="0"
+            [(ngModel)]="linkForm['startSecond']"
+            name="start"
+            placeholder="From"
+          /><span>to</span
+          ><input
+            type="number"
+            min="0"
+            [(ngModel)]="linkForm['endSecond']"
+            name="end"
+            placeholder="To"
+          /></div></label
+      ><label class="wide"
+        >Notes<textarea
+          [(ngModel)]="linkForm['notes']"
+          name="notes"
+          placeholder="Why is this player linked to the video?"
+        ></textarea></label></ng-container
+    ><ng-container *ngIf="dialog === 'comment'"
+      ><label class="wide"
+        >Comment *<textarea
+          class="comment-input"
+          [(ngModel)]="commentForm['comment']"
+          name="comment"
+          required
+          autofocus
+          placeholder="Write your coaching feedback..."
+        ></textarea></label
+      ><label
+        >Time in video (seconds)<input
+          type="number"
+          min="0"
+          [(ngModel)]="commentForm['timeSecond']"
+          name="commentTime" /></label
+      ><label
+        >Comment type<select
+          [(ngModel)]="commentForm['commentType']"
+          name="commentType"
+        >
+          <option>General</option>
+          <option>Positive</option>
+          <option>Improvement</option>
+          <option>Tactical</option>
+          <option>Technical</option>
+          <option>Physical</option>
+          <option>Mistake</option>
+        </select></label
+      ><label
+        >Visible to<select
+          [(ngModel)]="commentForm['visibility']"
+          name="commentVisibility"
+        >
+          <option>Private</option>
+          <option>Player</option>
+          <option>Team</option>
+          <option>Club</option>
+        </select></label
+      ></ng-container
+    >
+    <footer>
+      <button type="button" (click)="dialog = ''">Cancel</button
+      ><button class="primary" type="submit" [disabled]="mediaFileReading">
+          {{
+            mediaFileReading
+              ? language.text("Checking media…")
+              :
+            dialog === "link"
+              ? language.text("Link Player")
+              : dialog === "comment"
+              ? language.text("Add Comment")
+              : selected
+              ? language.text("Update Media")
+              : language.text("Upload Media")
+          }}
+      </button>
+    </footer>
+  </form>
+</div>
+<div class="confirm-overlay" *ngIf="deleteTarget" (click)="deleteTarget = undefined">
+  <section class="confirm-card" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">!</div>
+    <h2>Delete media?</h2>
+    <p>This will permanently delete <b>{{ deleteTarget['name'] || 'this media item' }}</b>. This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="outline" type="button" (click)="deleteTarget = undefined">Cancel</button>
+      <button class="confirm-danger" type="button" [disabled]="deleting" (click)="confirmDelete()">{{ deleting ? 'Deleting…' : 'Delete' }}</button>
+    </div>
+  </section>
+</div>
+<div class="toast" *ngIf="toast">✓ {{ toast }}</div>

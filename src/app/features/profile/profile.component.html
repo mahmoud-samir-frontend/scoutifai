@@ -1,0 +1,161 @@
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar (collapsedChange)="sidebarCollapsed = $event" />
+  <div class="page-area">
+    <app-header title="My Profile" />
+    <main>
+      <div class="state" *ngIf="loading">Loading your profile…</div>
+      <div class="state error" *ngIf="error">{{ error }}</div>
+      <ng-container *ngIf="profile && !loading"
+        ><section class="hero">
+          <div class="avatar">{{ auth.currentUser.initials }}</div>
+          <div>
+            <span class="eyebrow">{{ role }} PROFILE</span>
+            <h1>{{ user.name || record.name }}</h1>
+            <p>
+              {{ user.userName || user.emailAddress || auth.currentUser.email }}
+              <ng-container *ngIf="distinctEmail"
+                ><i>•</i> {{ distinctEmail }}</ng-container
+              >
+            </p>
+            <div class="badges">
+              <b>{{ record.playerStatus || record.status || "Active" }}</b
+              ><b *ngIf="record.medicalStatus">{{ record.medicalStatus }}</b>
+            </div>
+          </div>
+        </section>
+        <section class="grid">
+          <article>
+            <h2>Account</h2>
+            <dl>
+              <div>
+                <dt>Profile type</dt>
+                <dd>{{ role }}</dd>
+              </div>
+              <div>
+                <dt>Username</dt>
+                <dd>{{ user.userName || "—" }}</dd>
+              </div>
+              <div>
+                <dt>User type</dt>
+                <dd>{{ user.userTypes?.join(", ") || role }}</dd>
+              </div>
+            </dl>
+          </article>
+          <article>
+            <h2>Sports organization</h2>
+            <dl>
+              <div>
+                <dt>Organization</dt>
+                <dd>{{ user.organizationName || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Club</dt>
+                <dd>{{ user.clubName || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Sport</dt>
+                <dd>{{ user.sportName || "—" }}</dd>
+              </div>
+            </dl>
+          </article>
+          <article *ngIf="profile.player">
+            <h2>Player information</h2>
+            <dl>
+              <div>
+                <dt>Player number</dt>
+                <dd>{{ record.playerNumber || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Registration</dt>
+                <dd>{{ record.registrationNumber || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Medical status</dt>
+                <dd>{{ record.medicalStatus || "—" }}</dd>
+              </div>
+              <div>
+                <dt>Teams</dt>
+                <dd>{{ profile.player.teams?.length || 0 }}</dd>
+              </div>
+            </dl>
+          </article>
+          <article>
+            <h2>Activity overview</h2>
+            <dl>
+              <div>
+                <dt>Recent videos</dt>
+                <dd>{{ profile.recentVideos?.length || 0 }}</dd>
+              </div>
+              <div>
+                <dt>Linked players</dt>
+                <dd>{{ profile.linkedPlayers?.length || 0 }}</dd>
+              </div>
+              <div *ngIf="profile.player">
+                <dt>Active injuries</dt>
+                <dd>{{ profile.player.activeInjuries?.length || 0 }}</dd>
+              </div>
+              <div>
+                <dt>Sports profiles</dt>
+                <dd>{{ profile.sportsProfiles?.length || 0 }}</dd>
+              </div>
+            </dl>
+          </article>
+        </section>
+        <section class="danger-zone">
+          <div>
+            <span>{{ language.text("Danger zone", "منطقة خطرة") }}</span>
+            <h2>{{ language.text("Delete account", "حذف الحساب") }}</h2>
+            <p>
+              {{
+                language.text(
+                  "Permanently delete your account and all associated data. This action cannot be undone.",
+                  "احذف حسابك وجميع البيانات المرتبطة به نهائياً. لا يمكن التراجع عن هذا الإجراء."
+                )
+              }}
+            </p>
+          </div>
+          <button type="button" (click)="openDeleteAccount()">
+            {{ language.text("Delete account", "حذف الحساب") }}
+          </button>
+        </section></ng-container
+      >
+    </main>
+  </div>
+</div>
+<div class="delete-overlay" *ngIf="deleteDialog" (click)="deleteDialog = false">
+  <section class="delete-dialog" (click)="$event.stopPropagation()">
+    <button class="dialog-close" type="button" (click)="deleteDialog = false">
+      ×
+    </button>
+    <div class="warning-icon">!</div>
+    <h2>{{ language.text("Delete your account?", "هل تريد حذف حسابك؟") }}</h2>
+    <p>
+      {{
+        language.text(
+          "This will permanently delete your profile and associated sports data. Type DELETE to confirm.",
+          "سيؤدي ذلك إلى حذف ملفك وبياناتك الرياضية نهائياً. اكتب DELETE للتأكيد."
+        )
+      }}
+    </p>
+    <label
+      ><span>{{ language.text("Confirmation", "التأكيد") }}</span
+      ><input
+        [(ngModel)]="deleteConfirmation"
+        autocomplete="off"
+        placeholder="DELETE"
+    /></label>
+    <p class="delete-message" *ngIf="deleteMessage">{{ deleteMessage }}</p>
+    <div class="dialog-actions">
+      <button type="button" class="cancel" (click)="deleteDialog = false">
+        {{ language.text("Cancel", "إلغاء") }}</button
+      ><button
+        type="button"
+        class="confirm-delete"
+        [disabled]="deleteConfirmation !== 'DELETE'"
+        (click)="requestAccountDeletion()"
+      >
+        {{ language.text("Permanently delete account", "حذف الحساب نهائياً") }}
+      </button>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,207 @@
+<div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+  <app-sidebar (collapsedChange)="sidebarCollapsed = $event" />
+  <div class="page-area">
+    <app-header title="Roles" />
+    <main>
+      <section class="card">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">Access Control</p>
+            <h2>Roles Management</h2>
+            <p>
+              Create roles, configure entity permissions, and assign roles to
+              users.
+            </p>
+          </div>
+          <div class="heading-actions">
+            <button class="outline" (click)="openAssign()">
+              Assign Roles to User</button
+            ><button class="primary" (click)="openCreate()">
+              ＋ Create Role
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Configured Entities</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let role of filteredRoles">
+                <td>
+                  <b>{{ role.name }}</b>
+                </td>
+                <td>{{ (role.data | keyvalue).length }}</td>
+                <td class="actions">
+                  <button (click)="openEdit(role)" title="Edit">✎</button
+                  ><button
+                    class="danger"
+                    (click)="removeRole(role)"
+                    title="Delete"
+                  >
+                    ⌫
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!filteredRoles.length">
+                <td colspan="3" class="empty">No roles found.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal" *ngIf="roleDialog">
+  <section class="modal-card role-modal">
+    <header>
+      <div>
+        <p>Access Control</p>
+        <h2>{{ editingId ? "Edit Role" : "Create Role" }}</h2>
+      </div>
+      <button (click)="roleDialog = false">×</button>
+    </header>
+    <label class="name-field"
+      ><span>Role Name *</span
+      ><input [(ngModel)]="roleName" placeholder="Enter role name"
+    /></label>
+    <div class="presets">
+      <span>Permission preset:</span
+      ><button
+        class="outline"
+        [class.selected]="selectedPreset === 'read'"
+        (click)="applyPreset('read')"
+      >
+        Read only</button
+      ><button
+        class="outline"
+        [class.selected]="selectedPreset === 'manage'"
+        (click)="applyPreset('manage')"
+      >
+        Full management</button
+      ><button
+        class="outline"
+        [class.selected]="selectedPreset === 'clear'"
+        (click)="applyPreset('clear')"
+      >
+        Clear all
+      </button>
+    </div>
+    <div class="permission-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Entity</th>
+            <th>Read</th>
+            <th>Stream</th>
+            <th>Edit</th>
+            <th>Delete</th>
+            <th>Create</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let entity of entities">
+            <td>
+              <b>{{ entity.label }}</b>
+            </td>
+            <td *ngFor="let action of ['read', 'stream', 'edit', 'delete']">
+              <select
+                [ngModel]="permission(entity.name, action)"
+                (ngModelChange)="setPermission(entity.name, action, $event)"
+              >
+                <option *ngFor="let level of levels" [value]="level.value">
+                  {{ level.label }}
+                </option>
+              </select>
+            </td>
+            <td>
+              <select
+                [ngModel]="permission(entity.name, 'create')"
+                (ngModelChange)="setPermission(entity.name, 'create', $event)"
+              >
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="modal-actions">
+      <button class="outline" (click)="roleDialog = false">Cancel</button
+      ><button class="primary" (click)="saveRole()">
+        {{ editingId ? "Update Role" : "Create Role" }}
+      </button>
+    </footer>
+  </section>
+</div>
+
+<div class="modal" *ngIf="assignDialog">
+  <section class="modal-card assign-modal">
+    <header>
+      <div>
+        <p>Access Control</p>
+        <h2>Assign Roles to User</h2>
+      </div>
+      <button (click)="assignDialog = false">×</button>
+    </header>
+    <label
+      ><span>User *</span
+      ><select [(ngModel)]="selectedUserId" (change)="loadUserRoles()">
+        <option value="">Select User</option>
+        <option *ngFor="let user of users" [value]="user.id">
+          {{ userLabel(user) }}
+        </option>
+      </select></label
+    ><label
+      ><span>User Type *</span
+      ><select [(ngModel)]="selectedUserType">
+        <option *ngFor="let type of userTypes" [value]="type">
+          {{ type }}
+        </option>
+      </select></label
+    >
+    <div class="role-checks">
+      <span>Assigned Roles</span
+      ><label *ngFor="let role of roles"
+        ><input
+          type="checkbox"
+          [checked]="selectedRoleIds.includes(role.id)"
+          (change)="toggleRole(role.id, $any($event.target).checked)"
+        /><b>{{ role.name }}</b></label
+      >
+    </div>
+    <footer class="modal-actions">
+      <button class="outline" (click)="assignDialog = false">Cancel</button
+      ><button class="primary" (click)="saveAssignment()">
+        Save Assignment
+      </button>
+    </footer>
+  </section>
+</div>
+<div class="toast" *ngIf="toast">{{ toast }}</div>
+<div class="modal" *ngIf="deleteTarget" (click)="deleteTarget = undefined">
+  <section
+    class="modal-card assign-modal delete-confirm"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="warning-icon">!</div>
+    <h2>Delete role?</h2>
+    <p>
+      This will permanently delete <b>{{ deleteTarget.name }}</b
+      >. This action cannot be undone.
+    </p>
+    <footer class="modal-actions">
+      <button class="outline" (click)="deleteTarget = undefined">Cancel</button
+      ><button class="danger-button" (click)="confirmRoleDelete()">
+        Delete
+      </button>
+    </footer>
+  </section>
+</div>
